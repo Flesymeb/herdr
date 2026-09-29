@@ -101,11 +101,14 @@ pub enum AgentPanelSortConfig {
     Priority,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+/// Workspace scope of the expanded Agents sidebar. `Current` shows only the
+/// focused workspace's agents; `All` shows every workspace's agents.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
-enum LegacyAgentPanelScopeConfig {
-    Current,
+pub enum AgentPanelScopeConfig {
+    #[default]
     All,
+    Current,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
@@ -993,9 +996,9 @@ pub struct UiConfig {
     pub window_title: String,
     /// Agent sidebar ordering. Saved values are "spaces" or "priority". Default: "spaces".
     pub agent_panel_sort: AgentPanelSortConfig,
-    /// Retired setting that Herdr wrote before the workspace filter was removed.
-    #[serde(rename = "agent_panel_scope")]
-    _legacy_agent_panel_scope: Option<LegacyAgentPanelScopeConfig>,
+    /// Agent sidebar workspace scope. "current" shows only the focused
+    /// workspace's agents; "all" shows every workspace. Default: "all".
+    pub agent_panel_scope: AgentPanelScopeConfig,
     /// Agent status indicator style. Saved values are "dots" or "symbols". Default: "dots".
     pub status_indicators: StatusIndicatorStyle,
     /// Expanded sidebar row composition.
@@ -1221,7 +1224,7 @@ impl Default for UiConfig {
             tab_bar_right_separator: " ".into(),
             window_title: super::window_title::default_window_title(),
             agent_panel_sort: AgentPanelSortConfig::Spaces,
-            _legacy_agent_panel_scope: None,
+            agent_panel_scope: AgentPanelScopeConfig::All,
             status_indicators: StatusIndicatorStyle::Dots,
             sidebar: SidebarConfig::default(),
             accent: "cyan".into(),
@@ -1461,13 +1464,29 @@ agent_panel_sort = "workspaces"
 "#;
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.ui.agent_panel_sort, AgentPanelSortConfig::Spaces);
+    }
+
+    #[test]
+    fn agent_panel_scope_config_parses_and_defaults_to_all() {
+        assert_eq!(
+            Config::default().ui.agent_panel_scope,
+            AgentPanelScopeConfig::All
+        );
 
         let toml = r#"
 [ui]
 agent_panel_scope = "current"
 "#;
         let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.ui.agent_panel_scope, AgentPanelScopeConfig::Current);
         assert_eq!(config.ui.agent_panel_sort, AgentPanelSortConfig::Spaces);
+
+        let toml = r#"
+[ui]
+agent_panel_scope = "all"
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.ui.agent_panel_scope, AgentPanelScopeConfig::All);
     }
 
     #[test]

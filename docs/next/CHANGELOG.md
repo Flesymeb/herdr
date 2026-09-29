@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- `ui.agent_panel_scope` restores the workspace scope of the Agents panel: "current" lists only the focused workspace's agents, "all" lists every workspace's agents. The scope switch sits beside the sort switch in the panel header and is independent of `agent_panel_sort`. Restores the pre-0.7.1 setting name and values. (#975)
+
 ## [0.9.2] - 2026-09-29
 
 ### Breaking Changes

@@ -1005,7 +1005,7 @@ claude = [["terminal_title"]]
     }
 
     #[test]
-    fn load_live_config_accepts_legacy_agent_panel_scope_without_warning() {
+    fn load_live_config_accepts_agent_panel_scope_without_warning() {
         let loaded = load_live_config_from_str(
             r#"
 [ui]
@@ -1020,6 +1020,10 @@ agent_panel_sort = "priority"
         assert_eq!(
             loaded.config.ui.agent_panel_sort,
             super::super::AgentPanelSortConfig::Priority
+        );
+        assert_eq!(
+            loaded.config.ui.agent_panel_scope,
+            super::super::AgentPanelScopeConfig::Current
         );
     }
 
@@ -1041,7 +1045,7 @@ mouse_captur = true
     }
 
     #[test]
-    fn startup_config_accepts_legacy_agent_panel_scope_without_warning() {
+    fn startup_config_accepts_agent_panel_scope_without_warning() {
         let _guard = crate::config::test_config_env_lock().lock().unwrap();
         let path = std::env::temp_dir().join(format!(
             "herdr-config-legacy-agent-panel-scope-{}.toml",
@@ -1056,6 +1060,10 @@ mouse_captur = true
         let _ = std::fs::remove_file(path);
 
         assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+        assert_eq!(
+            loaded.config.ui.agent_panel_scope,
+            super::super::AgentPanelScopeConfig::All
+        );
     }
 
     #[test]

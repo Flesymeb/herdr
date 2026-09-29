@@ -1045,6 +1045,16 @@
           ]
         },
         {
+          "key": "ui.agent_panel_scope",
+          "type": "enum",
+          "default": "\"all\"",
+          "description": "Agent sidebar workspace scope. \"current\" lists only the focused workspace's agents; \"all\" lists every workspace's agents. Independent of agent_panel_sort.",
+          "values": [
+            "all",
+            "current"
+          ]
+        },
+        {
           "key": "ui.status_indicators",
           "type": "enum",
           "default": "\"dots\"",

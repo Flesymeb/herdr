@@ -20,6 +20,7 @@ pub(super) struct AgentRow {
 pub(super) fn ordered_agent_pane_ids(
     snapshot: &ClientShellSnapshot,
     sort: crate::config::AgentPanelSortConfig,
+    scope: crate::config::AgentPanelScopeConfig,
 ) -> Vec<String> {
     if snapshot.agent_view_label.is_some() {
         return snapshot
@@ -35,6 +36,15 @@ pub(super) fn ordered_agent_pane_ids(
             .collect();
     }
     let mut agents = snapshot.agents.iter().collect::<Vec<_>>();
+    if scope == crate::config::AgentPanelScopeConfig::Current {
+        // The focused workspace owns the panel: agents from parallel
+        // workspaces stay reachable through their own workspace tabs. A
+        // client without a focused workspace yet has nothing to scope to,
+        // so the panel falls back to every agent instead of emptying.
+        if let Some(focused) = snapshot.focused_workspace_id.as_deref() {
+            agents.retain(|agent| agent.workspace_id == focused);
+        }
+    }
     if sort == crate::config::AgentPanelSortConfig::Priority {
         agents.sort_by_key(|agent| {
             (
@@ -68,6 +78,8 @@ pub(super) fn render_agent_panel(
     }
 
     let rows = agent_rows(snapshot, config, None);
+    let scoped_empty = config.agent_panel_scope == crate::config::AgentPanelScopeConfig::Current
+        && rows.is_empty();
     render_agent_list(
         buffer,
         area,
@@ -75,7 +87,12 @@ pub(super) fn render_agent_panel(
         snapshot
             .agent_view_label
             .as_ref()
-            .map(|_| " no matching agents"),
+            .map(|_| " no matching agents")
+            .or(if scoped_empty {
+                Some(" no agents in this workspace")
+            } else {
+                None
+            }),
         config,
         agent_scroll,
         hits,
@@ -148,6 +165,49 @@ pub(super) fn render_agent_panel_header(
             })
             .add_modifier(Modifier::BOLD),
     );
+    let scope_label = match config.agent_panel_scope {
+        crate::config::AgentPanelScopeConfig::All => "all",
+        crate::config::AgentPanelScopeConfig::Current => "current",
+    };
+    let scope_width = display_width(scope_label) as u16;
+    // Only draw the scope switch when both labels fit beside the header.
+    let show_scope = agent_view_label.is_none() && area.width > sort_width + scope_width + 8;
+    let scope_rect = if show_scope {
+        Rect::new(
+            area.right()
+                .saturating_sub(sort_width)
+                .saturating_sub(1)
+                .saturating_sub(scope_width),
+            area.y + 1,
+            scope_width,
+            1,
+        )
+    } else {
+        Rect::default()
+    };
+    hits.agent_scope_toggle = if config.mouse_capture && show_scope {
+        scope_rect
+    } else {
+        Rect::default()
+    };
+    if show_scope {
+        put_text(
+            buffer,
+            scope_rect.x,
+            scope_rect.y,
+            scope_rect.width,
+            scope_label,
+            Style::default()
+                .fg(
+                    if config.agent_panel_scope == crate::config::AgentPanelScopeConfig::Current {
+                        config.palette.accent
+                    } else {
+                        config.palette.overlay0
+                    },
+                )
+                .add_modifier(Modifier::BOLD),
+        );
+    }
     true
 }
 
@@ -239,7 +299,7 @@ pub(super) fn agent_rows(
     config: &ClientShellConfig,
     machine: Option<&str>,
 ) -> Vec<AgentRow> {
-    ordered_agent_pane_ids(snapshot, config.agent_panel_sort)
+    ordered_agent_pane_ids(snapshot, config.agent_panel_sort, config.agent_panel_scope)
         .into_iter()
         .filter_map(|pane_id| agent_row(snapshot, &pane_id, config, machine))
         .collect()
